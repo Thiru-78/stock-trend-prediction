@@ -2,14 +2,20 @@ import os
 import sys
 import numpy as np
 import numpy.random
+import numpy.random._pickle
 import joblib
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 
-# Compatibility patch for models saved with NumPy 2.x loaded under NumPy 1.x
+# Patch NumPy 1.x bit_generator_ctor for models saved under NumPy 2.x
+def _patched_bit_generator_ctor(bit_generator_name='MT19937'):
+    return numpy.random.MT19937()
+
+numpy.random._pickle.__bit_generator_ctor = _patched_bit_generator_ctor
 sys.modules['numpy.random._mt19937'] = numpy.random
 
 app = Flask(__name__)
+
 
 
 
