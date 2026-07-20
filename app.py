@@ -20,6 +20,7 @@ ensemble_model = None
 ensemble_scaler = None
 lstm_model = None
 lstm_scaler = None
+model_load_error = None
 
 # Load models and scalers on startup
 try:
@@ -29,6 +30,7 @@ try:
     lstm_scaler = joblib.load('lstm_scaler.joblib')
     print("Models loaded successfully!")
 except Exception as e:
+    model_load_error = str(e)
     print(f"Error loading models: {e}")
 
 @app.route('/', methods=['GET'])
@@ -46,14 +48,16 @@ def health_check():
     status_code = 200 if models_ready else 500
     return jsonify({
         'status': 'healthy' if models_ready else 'degraded',
-        'models_loaded': models_ready
+        'models_loaded': models_ready,
+        'error': model_load_error
     }), status_code
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if not all([ensemble_model, ensemble_scaler, lstm_model, lstm_scaler]):
-        return jsonify({'error': 'Models are not loaded properly on the server.'}), 500
+        return jsonify({'error': f'Models are not loaded properly on the server: {model_load_error}'}), 500
+
 
     try:
         data = request.get_json()
