@@ -2,12 +2,21 @@ import os
 import sys
 import numpy as np
 import numpy.random
+import numpy.random._pickle
 import joblib
 import joblib.numpy_pickle
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 
-# Compatibility patches for models saved under NumPy 2.x being loaded under NumPy 1.x
+# --- COMPATIBILITY PATCHES FOR NUMPY 2.X MODELS ON NUMPY 1.X ---
+
+# 1. Patch BitGenerator unpickling (Fixes: '<class numpy.random._mt19937.MT19937> is not a known BitGenerator module')
+def _patched_bit_generator_ctor(bit_generator_name='MT19937'):
+    return numpy.random.MT19937()
+
+numpy.random._pickle.__bit_generator_ctor = _patched_bit_generator_ctor
+
+# 2. Patch RandomState tuple translation (Fixes: 'state is not a legacy MT19937 state')
 _orig_joblib_build = joblib.numpy_pickle.NumpyUnpickler.load_build
 def _safe_joblib_build(self):
     if len(self.stack) >= 2:
@@ -20,7 +29,7 @@ def _safe_joblib_build(self):
 
 joblib.numpy_pickle.NumpyUnpickler.load_build = _safe_joblib_build
 
-# Submodule aliases for NumPy 1.x environments
+# 3. Submodule aliases for NumPy 1.x environments (Fixes: "No module named 'numpy._core.numeric'")
 try:
     import numpy.core.numeric
     import numpy.core.multiarray
@@ -33,6 +42,7 @@ except Exception:
     pass
 
 app = Flask(__name__)
+
 
 
 
