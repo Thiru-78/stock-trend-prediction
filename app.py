@@ -18,7 +18,7 @@ lstm_scaler = None
 try:
     ensemble_model = joblib.load('nifty50_ensemble_model.joblib')
     ensemble_scaler = joblib.load('ensemble_scaler.joblib')
-    lstm_model = load_model('nifty50_lstm_model.keras')
+    lstm_model = load_model('nifty50_lstm_model.keras', compile=False)
     lstm_scaler = joblib.load('lstm_scaler.joblib')
     print("Models loaded successfully!")
 except Exception as e:
