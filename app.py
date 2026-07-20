@@ -56,17 +56,14 @@ def predict():
         if 'ensemble_features' not in data or 'lstm_sequence' not in data:
             return jsonify({'error': 'Missing required fields: ensemble_features or lstm_sequence'}), 400
         
-        # Expecting a flat list of features for Ensemble
-        # features: ['RSI_14', 'Return', 'MACD_diff', 'Price_Dist_SMA', 'Lag_Ret_1', 'Lag_Ret_2', 'Lag_Ret_3']
+        # Ensemble prediction
         ens_features = np.array(data['ensemble_features']).reshape(1, -1)
         ens_scaled = ensemble_scaler.transform(ens_features)
         ens_pred = int(ensemble_model.predict(ens_scaled)[0])
         ens_conf = float(np.max(ensemble_model.predict_proba(ens_scaled)))
 
-        # Expecting a sequence (window=15) for LSTM
-        # shape: (1, 15, 9)
+        # LSTM prediction
         lstm_seq = np.array(data['lstm_sequence']).reshape(1, 15, 9)
-        # Note: Scaler usually applied to 2D then reshaped to 3D
         lstm_reshaped = lstm_seq.reshape(-1, 9)
         lstm_scaled = lstm_scaler.transform(lstm_reshaped).reshape(1, 15, 9)
         
