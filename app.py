@@ -8,7 +8,36 @@ import joblib.numpy_pickle
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 
-# --- NUMPY MODULE COMPATIBILITY MAP ---
+# --- NUMPY 1.X / 2.X CROSS-VERSION COMPATIBILITY PATCHES ---
+if hasattr(numpy.random, '_pickle'):
+    try:
+        _orig_bit_generator_ctor = numpy.random._pickle.__bit_generator_ctor
+        def _safe_bit_generator_ctor(bit_generator_name='MT19937'):
+            try:
+                return _orig_bit_generator_ctor(bit_generator_name)
+            except Exception:
+                return numpy.random.MT19937()
+        numpy.random._pickle.__bit_generator_ctor = _safe_bit_generator_ctor
+    except Exception:
+        pass
+
+try:
+    _orig_joblib_build = joblib.numpy_pickle.NumpyUnpickler.load_build
+    def _safe_joblib_build(self):
+        try:
+            if len(self.stack) >= 2:
+                inst = self.stack[-2]
+                if isinstance(inst, numpy.random.RandomState):
+                    state = self.stack[-1]
+                    if not (isinstance(state, tuple) and len(state) > 0 and state[0] == 'MT19937'):
+                        self.stack[-1] = ('MT19937', np.zeros(624, dtype=np.uint32), 0, 0, 0.0)
+        except Exception:
+            pass
+        _orig_joblib_build(self)
+    joblib.numpy_pickle.NumpyUnpickler.load_build = _safe_joblib_build
+except Exception:
+    pass
+
 try:
     import numpy.core.numeric
     import numpy.core.multiarray
@@ -16,6 +45,7 @@ try:
     sys.modules['numpy._core.numeric'] = numpy.core.numeric
     sys.modules['numpy._core.multiarray'] = numpy.core.multiarray
     sys.modules['numpy._core.umath'] = numpy.core.umath
+    sys.modules['numpy.random._mt19937'] = numpy.random
 except Exception:
     pass
 
