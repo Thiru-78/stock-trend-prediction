@@ -19,12 +19,15 @@ numpy.random._pickle.__bit_generator_ctor = _patched_bit_generator_ctor
 # 2. Patch RandomState tuple translation (Fixes: 'state is not a legacy MT19937 state')
 _orig_joblib_build = joblib.numpy_pickle.NumpyUnpickler.load_build
 def _safe_joblib_build(self):
-    if len(self.stack) >= 2:
-        state = self.stack[-1]
-        inst = self.stack[-2]
-        if isinstance(inst, numpy.random.RandomState):
-            if isinstance(state, tuple) and len(state) > 0 and not isinstance(state[0], str):
-                self.stack[-1] = ('MT19937', np.zeros(624, dtype=np.uint32), 0, 0, 0.0)
+    try:
+        if len(self.stack) >= 2:
+            state = self.stack[-1]
+            inst = self.stack[-2]
+            if isinstance(inst, numpy.random.RandomState):
+                if isinstance(state, tuple) and len(state) > 0 and not isinstance(state[0], str):
+                    self.stack[-1] = ('MT19937', np.zeros(624, dtype=np.uint32), 0, 0, 0.0)
+    except Exception:
+        pass
     _orig_joblib_build(self)
 
 joblib.numpy_pickle.NumpyUnpickler.load_build = _safe_joblib_build
