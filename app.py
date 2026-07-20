@@ -1,10 +1,17 @@
 import os
-import joblib
+import sys
 import numpy as np
+import numpy.random
+import joblib
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 
+# Compatibility patch for models saved with NumPy 2.x loaded under NumPy 1.x
+sys.modules['numpy.random._mt19937'] = numpy.random
+
 app = Flask(__name__)
+
+
 
 
 
