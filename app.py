@@ -1,43 +1,39 @@
 import os
 import sys
 import numpy as np
-import numpy.core.numeric
-import numpy.core.multiarray
-import numpy.core.umath
 import numpy.random
-import numpy.random.mtrand
-import numpy.random._pickle
 import joblib
+import joblib.numpy_pickle
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 
 # Compatibility patches for models saved under NumPy 2.x being loaded under NumPy 1.x
-class SafeRandomState(numpy.random.RandomState):
-    def set_state(self, state):
-        try:
-            super().set_state(state)
-        except Exception:
-            pass
-    def __setstate__(self, state):
-        try:
-            super().__setstate__(state)
-        except Exception:
-            pass
+_orig_joblib_build = joblib.numpy_pickle.NumpyUnpickler.load_build
+def _safe_joblib_build(self):
+    if len(self.stack) >= 2:
+        state = self.stack[-1]
+        inst = self.stack[-2]
+        if isinstance(inst, numpy.random.RandomState):
+            if isinstance(state, tuple) and len(state) > 0 and not isinstance(state[0], str):
+                self.stack[-1] = ('MT19937', np.zeros(624, dtype=np.uint32), 0, 0, 0.0)
+    _orig_joblib_build(self)
 
-numpy.random.mtrand.RandomState = SafeRandomState
-numpy.random.RandomState = SafeRandomState
+joblib.numpy_pickle.NumpyUnpickler.load_build = _safe_joblib_build
 
-sys.modules['numpy._core.numeric'] = numpy.core.numeric
-sys.modules['numpy._core.multiarray'] = numpy.core.multiarray
-sys.modules['numpy._core.umath'] = numpy.core.umath
-sys.modules['numpy.random._mt19937'] = numpy.random
-
-def _patched_bit_generator_ctor(bit_generator_name='MT19937'):
-    return numpy.random.MT19937()
-
-numpy.random._pickle.__bit_generator_ctor = _patched_bit_generator_ctor
+# Submodule aliases for NumPy 1.x environments
+try:
+    import numpy.core.numeric
+    import numpy.core.multiarray
+    import numpy.core.umath
+    sys.modules['numpy._core.numeric'] = numpy.core.numeric
+    sys.modules['numpy._core.multiarray'] = numpy.core.multiarray
+    sys.modules['numpy._core.umath'] = numpy.core.umath
+    sys.modules['numpy.random._mt19937'] = numpy.random
+except Exception:
+    pass
 
 app = Flask(__name__)
+
 
 
 
